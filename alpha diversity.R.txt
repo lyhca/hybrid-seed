@@ -1,0 +1,82 @@
+setwd("D:/desktop/work/hybridseed/seed/bacteria/whole/alpha")
+otutab_bac <- read.csv("otu.csv",row.names = 1)
+bac.otu <- as.matrix(otutab_bac) 
+otutab_tax <- read.csv("taxa.csv",row.names = 1)
+taxa <- as.matrix(otutab_tax)
+
+env.df <- read.csv("env.csv",row.names = 1)
+library(ape)
+bac.tree <- read.tree("clusters.tree")
+
+source("w6/taxa_info.R")
+library(reshape2)
+library(ggplot2)
+library(ggsci)
+
+write.csv(taxa.df.clean3,"taxa.clean3.csv")
+
+install.packages("BiocManager")
+BiocManager::install("phyloseq")
+library(phyloseq)
+
+bac.phylo <- phyloseq(otu_table(bac.otu,
+                                taxa_are_rows = TRUE),
+                      tax_table(taxa.df.clean3),
+                      sample_data(env.df),
+                      phy_tree(bac.tree))
+
+#shannon index
+div <- plot_richness(bac.phylo,
+                     x = "hybrid",
+                     measures = ("Shannon"))
+
+div.df <- div$data
+div.df$variety <- factor(div.df$variety ,levels = c("C1","C2","C3"),ordered=TRUE)
+div.df$hybrid <- factor(div.df$hybrid ,levels = c("Male","Female","Offspring",ordered=TRUE))
+library(RColorBrewer)
+
+p <- ggplot(div.df,aes(x= hybrid,y=value,fill = factor(hybrid)))+
+  geom_violin(trim = T,linetype = 0,
+              position = position_dodge(width = 1),scale = "width")+
+  scale_fill_manual(name = "hybrid",
+                    values = alpha(alpha = 0.8, cols3))+
+  geom_boxplot(width=0.3)+
+  geom_jitter(position = position_jitter(0.17), size =1.5, color = "#696969")+
+  labs(x="", y="Shannon")+
+  theme_bw()+
+  guides(color=F)+
+ facet_wrap(~ variety, scales = "free_x",ncol = 5)+
+  theme(axis.text.x=element_text(face = "bold",size=10,angle=45,hjust = 1))
+
+
+p1 <- p + theme(axis.title = element_text(face = "bold"), 
+                legend.position = "none")
+
+#chao1 index
+
+div <- plot_richness(bac.phylo,
+                     x = "hybrid",
+                     measures = ("Chao1"))
+div.df <- div$data
+div.df$variety <- factor(div.df$variety ,levels = c("C1","C2","C3"),ordered=TRUE)
+div.df$hybrid <- factor(div.df$hybrid ,levels = c("Male","Female","Offspring",ordered=TRUE))
+
+p <- ggplot(div.df,aes(x= hybrid,y=value,fill = factor(hybrid)))+
+  geom_violin(trim = T,linetype = 0,
+              position = position_dodge(width = 1),scale = "width")+
+  scale_fill_manual(name = "hybrid",
+                    values = alpha(alpha = 0.8, cols3))+
+  geom_boxplot(width=0.3)+
+  geom_jitter(position = position_jitter(0.17), size =1.5, color = "#696969")+
+  labs(x="", y="Chao1")+
+  theme_bw()+
+  guides(color=F)+
+  # facet_wrap(~ variety, scales = "free_x",ncol = 5)+
+  theme(axis.text.x=element_text(face = "bold",size=10,angle=45,hjust = 1))
+
+
+p1 <- p + theme(axis.title = element_text(face = "bold"), 
+                legend.position = "none")
+
+
+

@@ -1,0 +1,43 @@
+taxa.df <- function(biom = taxa){
+        taxa.split <- taxa
+        taxa.df <- data.frame(Phylum = gsub(pattern = "p:",
+                                    replacement = " " ,
+                                    as.character(sapply(X = taxa.split, function(x){x[grep(pattern = "p:",x)]}))),
+                      Class = gsub(pattern = "c:",
+                                   replacement = " " ,
+                                   as.character(sapply(X = taxa.split, function(x){x[grep(pattern = "c:",x)]}))),
+                      Order = gsub(pattern = "o:",
+                                   replacement = " " ,
+                                   as.character(sapply(X = taxa.split, function(x){x[grep(pattern = "o:",x)]}))),
+                      Family = gsub(pattern = "f:",
+                                    replacement = " " ,
+                                    as.character(sapply(X = taxa.split, function(x){x[grep(pattern = "f:",x)]}))),
+                      Genus = gsub(pattern = "g:",
+                                   replacement = " " ,
+                                   as.character(sapply(X = taxa.split, function(x){x[grep(pattern = "g:",x)]})))
+        )
+        
+        phylum <- taxa.split[,2]
+        
+
+        taxa.df.clean1 <- apply(taxa.split,
+                        MARGIN = 2,
+                        function(x){gsub(pattern = "\\([0-9.]*\\)",
+                                         replacement = "" ,
+                                         x = x,
+                                         perl = T)})
+
+        taxa.df.clean2 <- apply(taxa.df.clean1,
+                        MARGIN = 2,
+                        function(x){gsub(pattern = "\"",
+                                         replacement = "" ,
+                                         x = x,
+                                         perl = F)})
+        taxa.df.clean3 <- gsub(pattern ="[dpcofg]:","",taxa.df.clean2,perl = TRUE)
+
+        row.names(taxa.df.clean2)  <- row.names(biom)
+        taxa.df.clean3[taxa.df.clean3==" "] <- "Unknown"
+        taxa.df.clean3
+}
+write.csv(taxa.df.clean3,file = "D:/desktop/work/hybridseed/seed/bacteria/taxa.df.clean4.csv")
+

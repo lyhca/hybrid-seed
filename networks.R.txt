@@ -1,0 +1,167 @@
+setwd("D:/desktop/work/hybridseed/seed/fungi")
+
+bac.otu <- read.csv("otu_female.csv", row.names = 1)
+otu.table <- t(as.matrix(bac.otu)) 
+
+#control OTUs number
+sum.col <- sum(colSums(otu.table))
+
+otu.table1 <- rbind(otu.table,AR=(colSums(otu.table)/sum.col)*100)
+
+otu.table2 <-otu.table1[,order(otu.table1[16,],decreasing = T)]
+
+otu.table3 <-otu.table2[-16,1:300]
+write.csv(otu.table3,"otu.table_offspring.csv")
+otu.percent <- otu.table3/rowSums(otu.table3)
+#write.csv(otu.percent,"otu.percent.csv")
+
+##Similarity matrix
+#Spearman Correlation
+library(WGCNA)
+library(igraph)
+if (!requireNamespace("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
+
+BiocManager::install("GO.db")
+
+if (!requireNamespace("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
+
+BiocManager::install("impute")
+if (!requireNamespace("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
+
+BiocManager::install("preprocessCore")
+library(preprocessCore)
+library(GO.db)
+library(impute)
+cor.mat <- corAndPvalue(otu.percent)
+
+CorrDF <- function(cormat, pmat) {
+  ut <- upper.tri(cormat) 
+  data.frame(
+    from = rownames(cormat)[col(cormat)[ut]],
+    to = rownames(cormat)[row(cormat)[ut]],
+    cor = (cormat)[ut],
+    p = pmat[ut]
+  )
+}
+
+cor_df <- CorrDF(cor.mat$cor , cor.mat$p) 
+cor_df <- cor_df[which(abs(cor_df$cor) >= 0.8),] #
+cor_df <- cor_df[which(cor_df$p < 0.001),] 
+igraph <- graph_from_data_frame(cor_df, direct=F) 
+length(V(igraph)) 
+#> [1] 852
+length(E(igraph)) 
+
+#Add properties for vertices
+
+
+otutab_tax <- read.csv("taxa.df.clean3.csv",row.names = 1)
+taxa <- as.matrix(otutab_tax)
+
+otu_abundance <- colSums(otu.table3)/15
+
+V(igraph)$phylum <- taxa[V(igraph)$name,3]
+V(igraph)$class <- taxa[V(igraph)$name,4]
+V(igraph)$order <- taxa[V(igraph)$name,5]
+V(igraph)$family <- taxa[V(igraph)$name,6]
+V(igraph)$abundance <- otu_abundance
+
+
+#Add properties for edges
+E(igraph)$positive[E(igraph)$cor >= 0.8] <- "positive"
+E(igraph)$negative[E(igraph)$cor <= -0.8] <- "negative" 
+
+#Export Network file
+write.graph(igraph,file = "igraph_female.graphml",format = "graphml")
+
+
+library(igraph)
+
+setwd("D:/desktop/work/hybridseed/seed/bacteria/whole/network/zipi")
+
+igraph <- read.graph("igraph_male.graphml", format = "graphml")
+a <- as_adjacency_matrix(igraph)
+a <- as.matrix(a)
+write.csv(a, "adjacency_igraph_male.csv")
+
+adjacency_unweight <- read.delim('adjacency_igraph_male.txt', row.names = 1, sep = '\t', check.names = FALSE)
+head(adjacency_unweight)[1:6]    
+
+
+igraph <- graph_from_adjacency_matrix(as.matrix(adjacency_unweight), mode = 'undirected', weighted = NULL, diag = FALSE)
+igraph   
+
+V(igraph)$degree <- degree(igraph)
+
+set.seed(123)
+V(igraph)$modularity <- membership(cluster_fast_greedy(igraph))
+
+
+nodes_list <- data.frame(
+    nodes_id = V(igraph)$name, 
+	degree = V(igraph)$degree, 
+	modularity = V(igraph)$modularity
+)
+head(nodes_list)    
+
+write.table(nodes_list, 'nodes_list_male.txt', sep = '\t', row.names = FALSE, quote = FALSE)
+
+
+source('zi_pi.r')
+
+
+adjacency_unweight <- read.delim('adjacency_igraph_male.txt', row.names = 1, sep = '\t', check.names = FALSE)
+
+
+nodes_list <- read.delim('nodes_list_male.txt', row.names = 1, sep = '\t', check.names = FALSE)
+
+
+nodes_list <- nodes_list[rownames(adjacency_unweight), ]
+
+
+zi_pi <- zi.pi(nodes_list, adjacency_unweight, degree = 'degree', modularity_class = 'modularity')
+head(zi_pi)
+
+write.table(zi_pi, 'zi_pi_result_male.txt', sep = '\t', row.names = FALSE, quote = FALSE)
+
+
+
+library(ggplot2)
+
+zi_pi <- na.omit(zi_pi)   
+zi_pi[which(zi_pi$within_module_connectivities < 2.5 & zi_pi$among_module_connectivities < 0.62),'type'] <- 'Peripherals'
+zi_pi[which(zi_pi$within_module_connectivities < 2.5 & zi_pi$among_module_connectivities > 0.62),'type'] <- 'Connectors'
+zi_pi[which(zi_pi$within_module_connectivities > 2.5 & zi_pi$among_module_connectivities < 0.62),'type'] <- 'Module hubs'
+zi_pi[which(zi_pi$within_module_connectivities > 2.5 & zi_pi$among_module_connectivities > 0.62),'type'] <- 'Network hubs'
+
+write.csv(zi_pi,"zi_pi_female_new1.csv")
+zi_pi <- read.csv("zi_pi_female_new3.csv",row.names = 1)
+
+ggplot(zi_pi, aes(among_module_connectivities, within_module_connectivities)) +
+geom_point(aes(color = type), size = 3) +
+scale_color_manual(values = c("#B1A4C0","#479E9B","#FDDC7B","#4169B2"), 
+    limits = c('Peripherals', 'Connectors', 'Module hubs', 'Network hubs'))+
+ # geom_text(data=zi_pi,mapping = aes(label=genus))+
+  theme(panel.grid.major =  element_blank(), 
+        #axis.line = element_line(colour = 'black'), 
+        panel.background = element_rect(fill = "white", color = "black", linetype = 1),
+        legend.key = element_blank()) +
+  labs(x = 'Among-module connectivities', y = 'Within-module connectivities', color = '') +
+  geom_vline(xintercept = 0.62, linetype = 2, color = "grey") +
+  geom_hline(yintercept = 2.5, linetype = 2, color = "grey")
+
+
+
+
+
+
+
+
+
+
+
+
+

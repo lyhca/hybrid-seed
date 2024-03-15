@@ -1,0 +1,101 @@
+setwd("D:/desktop/work/hybridseed/seed/bacteria")
+bac.otu <- read.csv("otu.csv",row.names = 1)
+bac.otu <- as.matrix(bac.otu)
+
+otutab_tax <- read.csv("taxa.csv",row.names = 1)
+taxa <- as.matrix(otutab_tax)
+
+library(GUniFrac)
+# import environmental data frame
+env.df <- read.csv("env.csv",row.names = 1) 
+
+# import phylogenetic tree
+library(ape)
+bac.tree <- read.tree("clusters.tree")
+# make phyloseq object
+library(phyloseq)
+bac.phylo <- phyloseq(otu_table(bac.otu,
+                                taxa_are_rows = TRUE),
+                      tax_table(taxa),
+                      sample_data(env.df),
+                      phy_tree(bac.tree))
+
+bac.phylo_new <- rarefy_even_depth(bac.phylo)
+
+library(DESeq2)
+
+bac.deseq <- phyloseq_to_deseq2(physeq = bac.phylo_new,
+                                design = ~1)
+bac.deseq.wald <- DESeq(bac.deseq,
+                        fitType = "parametric",
+                        test = "Wald" )
+bac.norm <- phyloseq(otu_table(counts(bac.deseq.wald, 
+                                      normalized = TRUE),
+                               taxa_are_rows = TRUE),
+                     tax_table(taxa),
+                     sample_data(env.df),
+                     phy_tree(bac.tree))
+
+write.csv(bac.norm@otu_table, "bacnorm_otu.csv")
+
+otu <- read.csv("bacnorm_otu.csv",row.names = 1)
+
+cols2 <- c("#00AC7D4D", "#8D85E64D", "#CC6BD44D")
+
+#cap
+throat_cap <- capscale(t(otu) ~ hybrid, env.df, dist="bray")
+throat_cap
+anova(throat_cap)
+ii2<-summary(throat_cap) 
+st2<-as.data.frame(ii2$sites[,c(1,2)]) 
+cap.df2 <- data.frame(st2,env.df)
+cols3 <- c("#B89C82","#A3BFF2","#7FAC5A")
+
+cap.df2$hybrid <- factor(cap.df2$hybrid ,levels = c("Male","Female","Offspring",ordered=TRUE))
+
+ggplot(cap.df2, aes(x = CAP1, y = CAP2, color = hybrid,fill = hybrid))+
+  geom_point(size = 4)+
+  stat_bag(prop = 1, alpha = 0.2, show.legend = F, aes(fill = hybrid))+
+  #stat_ellipse(level = 0.95, show.legend = F) +
+  scale_fill_manual( values = alpha(alpha =0.8, cols3))+
+  scale_color_manual( values = alpha(alpha =0.8, cols3))+ 
+  labs(x=paste("CAP 1 (", format(100 * eig[1] / sum(eig), digits=4), "%)", sep=""),
+       y=paste("CAP 2 (", format(100 * eig[2] / sum(eig), digits=4), "%)", sep="")) + 
+  theme_bw()+
+  facet_wrap(~ variety, scales = "free_x",ncol = 5)+
+  ggtitle(paste(format(100 * variance, digits=3), " % of variance; p=",
+                format(p.val, digits=2),
+                sep=""))
+  
+
+anova(throat_cap)
+
+set.seed (123)
+anova(throat_cap, step=1000)
+anova(throat_cap, by="axis", step=1000)
+anova(throat_cap, by="terms", step=1000)
+
+# ANOVA-like permutation analysis
+
+perm_anova.gen <- anova.cca(throat_cap)
+print(perm_anova.gen)
+var_tbl.gen <- variability_table(throat_cap)
+
+eig <- throat_cap$CCA$eig
+
+variance <- var_tbl.gen["constrained", "proportion"]
+p.val <- perm_anova.gen[1, 4]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
