@@ -1,0 +1,226 @@
+#  Bubble plot at the phylum level
+setwd("D:/desktop/wine")
+otutab_bac <- read.csv("otutab.csv",row.names = 1)
+bac.otu <- as.matrix(otutab_bac) 
+otutab_tax <- read.csv("taxa.csv",row.names = 1)
+taxa <- as.matrix(otutab_tax)
+env.df <- read.csv("env.csv",row.names = 1)
+library(ape)
+bac.tree <- read.tree("clusters.tree")
+
+source("w6/taxa_info.R")
+taxa.df <- taxa.df(taxa)
+library(phyloseq)
+
+bac.phylo <- phyloseq(otu_table(bac.otu,
+                                taxa_are_rows = TRUE),
+                      tax_table(taxa),
+                      sample_data(env.df),
+                      phy_tree(bac.tree))
+library(DESeq2)
+
+
+
+bac.deseq <- phyloseq_to_deseq2(physeq = bac.phylo,
+                                design = ~1)
+bac.deseq.wald <- DESeq(bac.deseq,
+                        fitType = "parametric",
+                        test = "Wald" )
+
+bac.norm <- phyloseq(otu_table(counts(bac.deseq.wald,normalized=TRUE),
+                               taxa_are_rows = TRUE),
+                     tax_table(taxa),
+                     sample_data(env.df),
+                     phy_tree(bac.tree))
+library(reshape2)
+library(ggplot2)
+library(ggsci)
+library(RColorBrewer)
+source("make_taxa_bar.R")
+
+col <-colorRampPalette((pal_npg( "nrc")(9)))(21)
+
+bar.table <- make_bar(phyloseq = bac.phylo, 
+                      keepnum = 10,
+                      level =2,
+                      sample.class=1:45)
+bar.df <- data.frame(melt(bar.table),env.df)
+
+write.csv(bar.df, "bardf_phylum.csv")
+bar.df$variety <- factor(bar.df$variety ,levels = c("C1","C2","C3"),ordered=TRUE)
+bar.df$hybrid <- factor(bar.df$hybrid ,levels = c("Male","Female","Offspring",ordered=TRUE))
+library(RColorBrewer)
+
+library(viridis)
+library(scales)
+library(ggplot2)
+
+
+
+setwd("D:/desktop/work/hybridseed/seed/bacteria/whole/bubble plot")
+
+bar.df <- read.csv("bardf_phylum.csv", row.names = 1)
+bar.df$hybrid <- factor(bar.df$hybrid ,levels = c("Male","Female","Offspring",ordered=TRUE))
+
+
+ggplot(bar.df, aes(y =Var2, x =hybrid)) +
+  
+  geom_point(aes(size = value, colour =Var2))+ 
+  
+  scale_colour_manual(values=c("#B1A4C0","#479E9B","#FDDC7B","#4169B2",
+                               "#ACCDDC","#DD5F60","#F2B379","#7CB6DB",
+                               "pink2","skyblue","Gold2"))+
+  
+  theme_bw(base_size = 12)  +
+  
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  
+  #theme(legend.position = "", legend.direction = "horizontal") +
+  
+  #+ labs(size = "Wind Speed (mph)", fill = "Months") # legend title
+  
+  scale_size(range = c(0,12),breaks = c(0,0.25,0.50,0.75))+ 
+  
+  guides(colour = guide_legend(override.aes = list(size=2))) +
+  
+  theme(axis.text=element_text(colour='black',size=9))   +
+  
+  facet_wrap(. ~variety)+
+  
+  theme(panel.background = element_rect(fill='white', colour='black'),
+        
+        panel.grid=element_blank(), 
+        
+        axis.title = element_text(color='black',size=9),
+        
+        axis.ticks.length = unit(0.4,"lines"), axis.ticks = element_line(color='black'),
+        
+        axis.line = element_line(colour = "black"), 
+        
+        axis.title.x=element_text(colour='black', size=9),
+        
+        axis.title.y=element_text(colour='black', size=9),
+        
+        axis.text=element_text(colour='black',size=9),
+        
+        legend.title=element_blank(),
+        
+        legend.text=element_text(size=9),
+        
+        legend.key=element_blank(),
+        
+        legend.background = element_rect(colour = "white"))+
+  
+  theme(axis.text.x = element_text(size = 9, angle = 45, hjust = 1)) 
+
+#  Bubble plot at the genus level 
+
+setwd("D:/desktop/wine")
+otutab_bac <- read.csv("otutab.csv",row.names = 1)
+bac.otu <- as.matrix(otutab_bac) 
+otutab_tax <- read.csv("taxa.csv",row.names = 1)
+taxa <- as.matrix(otutab_tax)
+env.df <- read.csv("env.csv",row.names = 1)
+library(ape)
+bac.tree <- read.tree("clusters.tree")
+
+source("w6/taxa_info.R")
+taxa.df <- taxa.df(taxa)
+library(phyloseq)
+
+bac.phylo <- phyloseq(otu_table(bac.otu,
+                                taxa_are_rows = TRUE),
+                      tax_table(taxa),
+                      sample_data(env.df),
+                      phy_tree(bac.tree))
+library(DESeq2)
+
+
+
+bac.deseq <- phyloseq_to_deseq2(physeq = bac.phylo,
+                                design = ~1)
+bac.deseq.wald <- DESeq(bac.deseq,
+                        fitType = "parametric",
+                        test = "Wald" )
+
+bac.norm <- phyloseq(otu_table(counts(bac.deseq.wald,normalized=TRUE),
+                               taxa_are_rows = TRUE),
+                     tax_table(taxa),
+                     sample_data(env.df),
+                     phy_tree(bac.tree))
+library(reshape2)
+library(ggplot2)
+library(ggsci)
+library(RColorBrewer)
+source("make_taxa_bar.R")
+
+col <-colorRampPalette((pal_npg( "nrc")(9)))(21)
+
+bar.table <- make_bar(phyloseq = bac.phylo, 
+                      keepnum = 10,
+                      level =6,
+                      sample.class=1:45)
+bar.df <- data.frame(melt(bar.table),env.df)
+
+write.csv(bar.df, "bardf_genus.csv")
+bar.df$variety <- factor(bar.df$variety ,levels = c("C1","C2","C3"),ordered=TRUE)
+bar.df$hybrid <- factor(bar.df$hybrid ,levels = c("Male","Female","Offspring",ordered=TRUE))
+library(RColorBrewer)
+bar.df <- read.csv("bardf_genus.csv", row.names = 1)
+
+bar.df$hybrid <- factor(bar.df$hybrid ,levels = c("Male","Female","Offspring",ordered=TRUE))
+ggplot(bar.df, aes(y =Var2, x =hybrid)) +
+  
+  geom_point(aes(size = value, colour =Var2))+ 
+  
+  scale_colour_manual(values=c("#B1A4C0","#479E9B","#FDDC7B","#4169B2",
+                               "#ACCDDC","#DD5F60","#F2B379","#7CB6DB",
+                               "pink2","skyblue","Gold2","#73D1BA",
+                               "#AAD124","#7040D1","#D13CA4",
+                               "#CFA855"))+
+  
+  theme_bw(base_size = 12)  +
+  
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))+
+  
+  #theme(legend.position = "", legend.direction = "horizontal") +
+  
+  #+ labs(size = "Wind Speed (mph)", fill = "Months") # legend title
+  
+  scale_size(range = c(0,12),breaks = c(0,0.25,0.50,0.75))+ 
+  
+  guides(colour = guide_legend(override.aes = list(size=2))) +
+  
+  theme(axis.text=element_text(colour='black',size=9))   +
+  
+  facet_wrap(. ~variety)+
+  
+  theme(panel.background = element_rect(fill='white', colour='black'),
+        
+        panel.grid=element_blank(), 
+        
+        axis.title = element_text(color='black',size=9),
+        
+        axis.ticks.length = unit(0.4,"lines"), axis.ticks = element_line(color='black'),
+        
+        axis.line = element_line(colour = "black"), 
+        
+        axis.title.x=element_text(colour='black', size=9),
+        
+        axis.title.y=element_text(colour='black', size=9),
+        
+        axis.text=element_text(colour='black',size=9),
+        
+        legend.title=element_blank(),
+        
+        legend.text=element_text(size=9),
+        
+        legend.key=element_blank(),
+        
+        legend.background = element_rect(colour = "white"))+
+  
+  theme(axis.text.x = element_text(size = 9, angle = 45, hjust = 1)) 
+
+
+
+
